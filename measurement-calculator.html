@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Measurement Calculator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+  .container { max-width: 600px; width: 100%; }
+  h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #1a1a2e; }
+  .card { background: #fff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  label { display: block; font-size: .875rem; font-weight: 500; color: #374151; margin-bottom: .375rem; }
+  select, input { width: 100%; padding: .625rem .75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: .875rem; outline: none; transition: border-color .15s; }
+  select:focus, input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+  .row { display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: end; }
+  .row .equals { padding-bottom: .375rem; font-size: 1.25rem; color: #9ca3af; }
+  .result-box { margin-top: 1rem; padding: .75rem; background: #f8fafc; border-radius: 8px; font-size: 1.25rem; font-weight: 600; color: #1a1a2e; text-align: center; }
+  .unit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: .75rem; }
+  .unit-btn { padding: .5rem; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; font-size: .75rem; text-align: center; transition: all .1s; }
+  .unit-btn:hover { border-color: #6366f1; }
+  .unit-btn.active-from { background: #e59651; color: #fff; border-color: #fff; }
+  .unit-btn.active-to   { background: #66d395; color: #fff; border-color: #fff; }
+  .category-btn { padding: .5rem 1rem; border: 1px solid #d1d5db; border-radius: 20px; background: #fff; cursor: pointer; font-size: .8125rem; margin: 0 .25rem .5rem 0; transition: all .1s; }
+  .category-btn:hover { border-color: #6366f1; }
+  .category-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+  .categories { margin-bottom: 1rem; display: flex; flex-wrap: wrap; }
+  .swap-btn { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: .5rem .75rem; cursor: pointer; font-size: .875rem; transition: all .1s; margin-top: .5rem; }
+  .swap-btn:hover { border-color: #6366f1; background: #f8fafc; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Measurement Calculator</h1>
+  <div class="card">
+    <div class="categories" id="categories"></div>
+    <div class="unit-grid" id="fromUnits"></div>
+    <label>Value</label>
+    <input type="number" id="inputValue" value="1" step="any">
+    <div style="margin-top:.75rem"><label>To</label></div>
+    <div class="unit-grid" id="toUnits"></div>
+    <div class="result-box" id="result">—</div>
+    <button class="swap-btn" id="swapBtn">Swap</button>
+  </div>
+</div>
+<script>
+const data = {
+  length: {
+    units: ['Meters','Feet','Inches','Centimeters','Kilometers','Miles','Yards','Millimeters'],
+    from: {
+      Meters: v => v, Feet: v => v/3.28084, Inches: v => v/39.3701,
+      Centimeters: v => v/100, Kilometers: v => v*1000, Miles: v => v*1609.344,
+      Yards: v => v/1.09361, Millimeters: v => v/1000
+    },
+    to: {
+      Meters: v => v, Feet: v => v*3.28084, Inches: v => v*39.3701,
+      Centimeters: v => v*100, Kilometers: v => v/1000, Miles: v => v/1609.344,
+      Yards: v => v*1.09361, Millimeters: v => v*1000
+    }
+  },
+  weight: {
+    units: ['Kilograms','Pounds','Ounces','Grams','Stones','Tons (metric)'],
+    from: {
+      Kilograms: v => v, Pounds: v => v/2.20462, Ounces: v => v/35.274,
+      Grams: v => v/1000, Stones: v => v/6.35029, 'Tons (metric)': v => v*1000
+    },
+    to: {
+      Kilograms: v => v, Pounds: v => v*2.20462, Ounces: v => v*35.274,
+      Grams: v => v*1000, Stones: v => v*6.35029, 'Tons (metric)': v => v/1000
+    }
+  },
+  temperature: {
+    units: ['Celsius','Fahrenheit','Kelvin'],
+    from: {
+      Celsius: v => v, Fahrenheit: v => (v-32)*5/9, Kelvin: v => v-273.15
+    },
+    to: {
+      Celsius: v => v, Fahrenheit: v => v*9/5+32, Kelvin: v => v+273.15
+    }
+  },
+  volume: {
+    units: ['Liters','Gallons (US)','Quarts','Cups','Milliliters','Fluid Ounces','Pints','Tablespoons'],
+    from: {
+      Liters: v => v, 'Gallons (US)': v => v/3.78541, Quarts: v => v/1.05669,
+      Cups: v => v/4.22675, Milliliters: v => v/1000, 'Fluid Ounces': v => v/33.814,
+      Pints: v => v/2.11338, Tablespoons: v => v/67.628
+    },
+    to: {
+      Liters: v => v, 'Gallons (US)': v => v*3.78541, Quarts: v => v*1.05669,
+      Cups: v => v*4.22675, Milliliters: v => v*1000, 'Fluid Ounces': v => v*33.814,
+      Pints: v => v*2.11338, Tablespoons: v => v*67.628
+    }
+  },
+  area: {
+    units: ['Square Meters','Square Feet','Square Inches','Square Kilometers','Acres','Hectares'],
+    from: {
+      'Square Meters': v => v, 'Square Feet': v => v/10.7639,
+      'Square Inches': v => v/1550, 'Square Kilometers': v => v*1e6,
+      Acres: v => v*4046.86, Hectares: v => v*10000
+    },
+    to: {
+      'Square Meters': v => v, 'Square Feet': v => v*10.7639,
+      'Square Inches': v => v*1550, 'Square Kilometers': v => v/1e6,
+      Acres: v => v/4046.86, Hectares: v => v/10000
+    }
+  },
+  speed: {
+    units: ['km/h','mph','m/s','Knots'],
+    from: {
+      'km/h': v => v/3.6, 'mph': v => v/2.23694, 'm/s': v => v, 'Knots': v => v/1.94384
+    },
+    to: {
+      'km/h': v => v*3.6, 'mph': v => v*2.23694, 'm/s': v => v, 'Knots': v => v*1.94384
+    }
+  },
+  time: {
+    units: ['Seconds','Minutes','Hours','Days','Weeks'],
+    from: {
+      Seconds: v => v, Minutes: v => v*60, Hours: v => v*3600, Days: v => v*86400, Weeks: v => v*604800
+    },
+    to: {
+      Seconds: v => v, Minutes: v => v/60, Hours: v => v/3600, Days: v => v/86400, Weeks: v => v/604800
+    }
+  }
+};
+
+const categoryLabels = {
+  length: 'Length', weight: 'Weight', temperature: 'Temperature',
+  volume: 'Volume', area: 'Area', speed: 'Speed', time: 'Time'
+};
+
+const catNames = ['length','weight','temperature','volume','area','speed','time'];
+
+let currentCat = 'length';
+let fromUnit = 'Meters';
+let toUnit = 'Feet';
+
+const catEl = document.getElementById('categories');
+const fromEl = document.getElementById('fromUnits');
+const toEl = document.getElementById('toUnits');
+const inputEl = document.getElementById('inputValue');
+const resultEl = document.getElementById('result');
+const swapBtn = document.getElementById('swapBtn');
+
+function renderCategories() {
+  catEl.innerHTML = catNames.map(k =>
+    `<button class="category-btn${k===currentCat?' active':''}" data-cat="${k}">${categoryLabels[k]}</button>`
+  ).join('');
+}
+
+function renderUnits() {
+  const cat = data[currentCat];
+  fromEl.innerHTML = cat.units.map(u =>
+    `<button class="unit-btn${u===fromUnit?' active-from':''}" data-unit="${u}">${u}</button>`
+  ).join('');
+  toEl.innerHTML = cat.units.map(u =>
+    `<button class="unit-btn${u===toUnit?' active-to':''}" data-unit="${u}">${u}</button>`
+  ).join('');
+}
+
+function convert() {
+  const cat = data[currentCat];
+  const val = parseFloat(inputEl.value);
+  if (isNaN(val)) { resultEl.textContent = '—'; return; }
+  const inBase = cat.from[fromUnit](val);
+  const out = cat.to[toUnit](inBase);
+  resultEl.textContent = `${val} ${fromUnit} = ${parseFloat(out.toFixed(10))} ${toUnit}`;
+}
+
+function setCategory(cat) {
+  currentCat = cat;
+  const units = data[cat].units;
+  fromUnit = units[0];
+  toUnit = units[1] || units[0];
+  renderCategories();
+  renderUnits();
+  convert();
+}
+
+catEl.addEventListener('click', e => {
+  const b = e.target.closest('.category-btn');
+  if (b) setCategory(b.dataset.cat);
+});
+
+fromEl.addEventListener('click', e => {
+  const b = e.target.closest('.unit-btn');
+  if (b) { fromUnit = b.dataset.unit; renderUnits(); convert(); }
+});
+
+toEl.addEventListener('click', e => {
+  const b = e.target.closest('.unit-btn');
+  if (b) { toUnit = b.dataset.unit; renderUnits(); convert(); }
+});
+
+inputEl.addEventListener('input', convert);
+
+swapBtn.addEventListener('click', () => {
+  [fromUnit, toUnit] = [toUnit, fromUnit];
+  renderUnits();
+  convert();
+});
+
+setCategory('length');
+</script>
+</body>
+</html>
